@@ -44,6 +44,7 @@ use Symfony\Component\Serializer\Tests\Fixtures\Annotations\AbstractDummyFirstCh
 use Symfony\Component\Serializer\Tests\Fixtures\Annotations\AbstractDummySecondChild;
 use Symfony\Component\Serializer\Tests\Fixtures\DummySecondChildQuux;
 use Symfony\Component\Serializer\Tests\Normalizer\Features\ObjectDummyWithContextAttribute;
+use Symfony\Component\Serializer\Tests\Normalizer\Features\ObjectDummyWithContextAttributeAndSerializedPath;
 
 class AbstractObjectNormalizerTest extends TestCase
 {
@@ -541,6 +542,21 @@ class AbstractObjectNormalizerTest extends TestCase
         $obj = $serializer->denormalize(['property_with_serialized_name' => '01-02-2022', 'propertyWithoutSerializedName' => '01-02-2022'], ObjectDummyWithContextAttribute::class);
 
         $this->assertSame($obj->propertyWithSerializedName->format('Y-m-d'), $obj->propertyWithoutSerializedName->format('Y-m-d'));
+    }
+
+    public function testNormalizeUsesContextAttributeForPropertiesInConstructorWithSerializedPath()
+    {
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
+
+        $extractor = new PropertyInfoExtractor([], [new PhpDocExtractor(), new ReflectionExtractor()]);
+        $normalizer = new ObjectNormalizer($classMetadataFactory, new MetadataAwareNameConverter($classMetadataFactory), null, $extractor);
+        $serializer = new Serializer([new DateTimeNormalizer([DateTimeNormalizer::FORMAT_KEY => 'd-m-Y']), $normalizer]);
+
+        $obj = new ObjectDummyWithContextAttributeAndSerializedPath(new \DateTimeImmutable('22-02-2023'));
+
+        $data = $serializer->normalize($obj);
+
+        $this->assertSame(['property' => ['with_path' => '02-22-2023']], $data);
     }
 }
 
